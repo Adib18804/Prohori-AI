@@ -88,7 +88,7 @@ class SecurityOrchestrator:
             
             # Fast lane: SAFE requests bypass debate
             if (triage_result["classification"] == TriageClassification.SAFE.value 
-                and triage_result["confidence"] > 0.95 
+                and triage_result["confidence"] > 0.90 
                 and not triage_result["requires_debate"]):
                 
                 logger.info(

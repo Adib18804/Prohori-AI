@@ -63,6 +63,20 @@ export function useChat(sessionId: string) {
 
         const data = await response.json();
 
+        // If a moderator bans the user during an active session, surface it
+        // immediately from the next protected request without changing the API flow.
+        if (response.status === 403) {
+          const detail = typeof data.detail === 'string' ? data.detail : data.detail?.code;
+          if (detail === 'user_banned' || data.code === 'user_banned') {
+            setTrustStatus({
+              action: 'banned',
+              banned_until: data.banned_until ?? data.detail?.banned_until,
+              reason: data.reason ?? data.detail?.reason ?? 'Security policy violation',
+            });
+            return;
+          }
+        }
+
         // Check for trust issues
         if (data.verdict === 'BLOCK') {
           // Could be warning or ban

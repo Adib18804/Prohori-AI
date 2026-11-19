@@ -1,178 +1,136 @@
-import { Shield, CheckCircle, XCircle, Scale } from 'lucide-react';
-
-interface DebateData {
-  triage?: {
-    classification: string;
-    risk_score: number;
-    confidence?: number;
-  };
-  prosecutor?: {
-    position: string;
-    risk_score: number;
-    reasoning: string;
-  };
-  defender?: {
-    position: string;
-    risk_score: number;
-    reasoning: string;
-  };
-  verdict?: {
-    verdict: string;
-    confidence: number;
-    reason: string;
-  };
-}
+import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Shield, CheckCircle, XCircle, Scale, Loader2 } from 'lucide-react';
 
 interface DebatePanelProps {
-  debate: DebateData | null;
-  isVisible: boolean;
+  /**
+   * True while the backend is processing the 4‑agent debate.
+   */
+  isLoading: boolean;
+  /** Verdict returned by the backend (e.g. "ALLOW", "BLOCK", "REDACT"). */
+  verdict?: string;
+  /** Risk classification from the triage step (e.g. "SAFE", "SUSPICIOUS", "MALICIOUS"). */
+  riskLevel?: string;
+  /** Optional human‑readable reason supplied by the backend. */
+  reason?: string;
+  /** Confidence score between 0 and 1. */
+  confidence?: number;
 }
 
-export default function DebatePanel({ debate, isVisible }: DebatePanelProps) {
-  if (!isVisible) return null;
+/**
+ * Animated security analysis panel used on the Chat page.
+ *
+ * - Shows a radar‑style loading animation while `isLoading` is true.
+ * - After loading finishes it displays a verdict card with colour‑coded styling.
+ * - The component is fully responsive: a fixed sidebar on desktop and a bottom‑sheet style
+ *   panel on mobile (handled by the parent). No external packages are required beyond the
+ *   already‑installed `framer-motion` and `lucide-react`.
+ */
+export default function DebatePanel({
+  isLoading,
+  verdict,
+  riskLevel,
+  reason,
+  confidence,
+}: DebatePanelProps) {
+  // Control step‑by‑step messages during the loading animation.
+  const steps = [
+    '🛡️ Triage Agent: Scanning intent',
+    '⚖️ Prosecutor Agent: Evaluating threat',
+    '🛡️ Defender Agent: Counter‑analysis',
+    '🏛️ Judge Agent: Rendering verdict',
+  ];
+  const [stepIndex, setStepIndex] = useState(0);
 
-  if (!debate) {
-    return (
-      <div className="w-full border-l border-[#2A2A38] bg-[#12121A] p-4 md:w-80 md:p-5 xl:w-96 xl:p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#10B981]/20 to-[#3B82F6]/20 border border-[#10B981]/30 flex items-center justify-center">
-            <Shield className="w-6 h-6 text-[#10B981]" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-[#E8E8F0]">Security Analysis</h3>
-            <p className="text-xs text-[#8B8B9E]">Real-time threat detection</p>
-          </div>
-        </div>
+  useEffect(() => {
+    if (!isLoading) {
+      setStepIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setStepIndex((i) => (i + 1) % steps.length);
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
-        <div className="text-center py-12">
-          <CheckCircle className="w-12 h-12 text-[#10B981] mx-auto mb-3" />
-          <p className="text-sm font-medium text-[#10B981] mb-1">All Clear</p>
-          <p className="text-xs text-[#8B8B9E]">
-            No security threats detected in this conversation
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Helper to pick a colour based on the verdict.
+  const verdictColor = verdict === 'ALLOW' ? 'text-[#10B981]' : verdict === 'REDACT' ? 'text-[#F59E0B]' : 'text-[#EF4444]';
+
+  // Radar animation – three concentric circles that pulse.
+  const Radar = () => (
+    <div className="relative flex size-48 items-center justify-center">
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className="absolute size-full rounded-full border border-[#3B82F6]/30"
+          animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0.2, 0.6] }}
+          transition={{ repeat: Infinity, duration: 2.5, delay: i * 0.4, ease: 'easeInOut' }}
+        />
+      ))}
+      <motion.div
+        className="size-8 rounded-full bg-[#3B82F6]"
+        animate={{ rotate: 360 }}
+        transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}
+      />
+    </div>
+  );
 
   return (
-    <div className="w-full border-l border-[#2A2A38] bg-[#12121A] md:w-80 xl:w-96 overflow-y-auto">
-      <div className="p-6 border-b border-[#2A2A38] sticky top-0 bg-[#12121A] z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#F59E0B]/20 to-[#EF4444]/20 border border-[#F59E0B]/30 flex items-center justify-center">
-            <Shield className="w-6 h-6 text-[#F59E0B]" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-[#E8E8F0]">Active Debate</h3>
-            <p className="text-xs text-[#8B8B9E]">Multi-agent analysis</p>
-          </div>
+    <div className="w-full border-l border-[#2A2A38] bg-[#12121A] md:w-80 xl:w-96 overflow-y-auto p-4 md:p-5 xl:p-6">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#10B981]/20 to-[#3B82F6]/20 border border-[#10B981]/30 flex items-center justify-center">
+          <Shield className="w-6 h-6 text-[#10B981]" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-[#E8E8F0]">Security Analysis</h3>
+          <p className="text-xs text-[#8B8B9E]">Real‑time threat detection</p>
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
-        {/* Triage */}
-        {debate.triage && (
-          <div className="bg-[#1A1A24] border border-[#2A2A38] rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Shield className="w-4 h-4 text-[#3B82F6]" />
-              <h4 className="text-sm font-semibold text-[#E8E8F0]">Triage Agent</h4>
+      {isLoading ? (
+        <div className="flex flex-col items-center gap-4">
+          <Radar />
+          <p className="text-sm font-medium text-[#E8E8F0]">{steps[stepIndex]}</p>
+          <Loader2 className="animate-spin text-[#3B82F6]" size={24} />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Verdict Card */}
+          {verdict && (
+            <div className={`bg-[#1A1A24] border ${verdict === 'ALLOW' ? 'border-[#10B981]/30' : verdict === 'REDACT' ? 'border-[#F59E0B]/30' : 'border-[#EF4444]/30'} rounded-lg p-4`}>
+              <div className="flex items-center gap-2 mb-2">
+                {verdict === 'ALLOW' && <CheckCircle className="w-5 h-5 text-[#10B981]" />}
+                {verdict === 'BLOCK' && <XCircle className="w-5 h-5 text-[#EF4444]" />}
+                {verdict === 'REDACT' && <Scale className="w-5 h-5 text-[#F59E0B]" />}
+                <h4 className={`text-sm font-semibold ${verdictColor}`}>Final Verdict: {verdict}</h4>
+              </div>
+              {confidence !== undefined && (
+                <div className="flex justify-between text-xs mb-2">
+                  <span className="text-[#8B8B9E]">Confidence</span>
+                  <span className="font-medium text-[#E8E8F0]">{(confidence * 100).toFixed(0)}%</span>
+                </div>
+              )}
+              {reason && (
+                <p className="text-xs text-[#8B8B9E] leading-relaxed">
+                  {reason}
+                </p>
+              )}
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8B8B9E]">Classification</span>
-                <span className={`font-medium ${
-                  debate.triage.classification === 'SAFE' ? 'text-[#10B981]' :
-                  debate.triage.classification === 'SUSPICIOUS' ? 'text-[#F59E0B]' :
-                  'text-[#EF4444]'
-                }`}>
-                  {debate.triage.classification}
-                </span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8B8B9E]">Confidence</span>
-                <span className="font-medium text-[#E8E8F0]">
-                  {((debate.triage.confidence ?? debate.triage.risk_score) * 100).toFixed(0)}%
-                </span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[#0D0D14]">
-                <div className="h-full rounded-full bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] transition-all" style={{ width: `${Math.min(100, Math.max(0, (debate.triage.confidence ?? debate.triage.risk_score) * 100))}%` }} />
-              </div>
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Prosecutor */}
-        {debate.prosecutor && (
-          <div className="bg-[#1A1A24] border border-[#EF4444]/30 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <XCircle className="w-4 h-4 text-[#EF4444]" />
-              <h4 className="text-sm font-semibold text-[#EF4444]">Prosecutor</h4>
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8B8B9E]">Position</span>
-                <span className="font-medium text-[#EF4444]">{debate.prosecutor.position}</span>
+          {/* Risk Level */}
+          {riskLevel && (
+            <div className="bg-[#1A1A24] border border-[#3B82F6]/30 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Shield className="w-5 h-5 text-[#3B82F6]" />
+                <h4 className="text-sm font-semibold text-[#3B82F6]">Risk Level</h4>
               </div>
-              <p className="text-xs text-[#8B8B9E] leading-relaxed">
-                {debate.prosecutor.reasoning}
-              </p>
+              <p className="text-xs text-[#E8E8F0] capitalize">{riskLevel}</p>
             </div>
-          </div>
-        )}
-
-        {/* Defender */}
-        {debate.defender && (
-          <div className="bg-[#1A1A24] border border-[#10B981]/30 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle className="w-4 h-4 text-[#10B981]" />
-              <h4 className="text-sm font-semibold text-[#10B981]">Defender</h4>
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8B8B9E]">Position</span>
-                <span className="font-medium text-[#10B981]">{debate.defender.position}</span>
-              </div>
-              <p className="text-xs text-[#8B8B9E] leading-relaxed">
-                {debate.defender.reasoning}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Final Verdict */}
-        {debate.verdict && (
-          <div className="bg-[#1A1A24] border border-[#7C3AED]/30 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Scale className="w-4 h-4 text-[#7C3AED]" />
-              <h4 className="text-sm font-semibold text-[#7C3AED]">Final Verdict</h4>
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8B8B9E]">Decision</span>
-                <span className={`font-medium ${
-                  debate.verdict.verdict === 'ALLOW' ? 'text-[#10B981]' :
-                  debate.verdict.verdict === 'REDACT' ? 'text-[#F59E0B]' :
-                  'text-[#EF4444]'
-                }`}>
-                  {debate.verdict.verdict}
-                </span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[#0D0D14]">
-                <div className="h-full rounded-full bg-gradient-to-r from-[#7C3AED] to-[#D946EF] transition-all" style={{ width: `${Math.min(100, Math.max(0, debate.verdict.confidence * 100))}%` }} />
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8B8B9E]">Confidence</span>
-                <span className="font-medium text-[#E8E8F0]">
-                  {(debate.verdict.confidence * 100).toFixed(0)}%
-                </span>
-              </div>
-              <p className="text-xs text-[#8B8B9E] leading-relaxed">
-                {debate.verdict.reason}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Bot, User as UserIcon } from 'lucide-react';
-import TypingIndicator from './TypingIndicator';
+import DebateLoading from './DebateLoading';
 
 interface Message {
   id: string;
@@ -85,9 +85,7 @@ export default function ChatMessages({ messages, isTyping = false }: ChatMessage
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#D946EF] flex items-center justify-center flex-shrink-0">
             <Bot className="w-5 h-5 text-white" />
           </div>
-          <div className="bg-[#12121A] border border-[#2A2A38] rounded-2xl px-4 py-3">
-            <TypingIndicator />
-          </div>
+          <DebateLoading />
         </div>
       )}
 

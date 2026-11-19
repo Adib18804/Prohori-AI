@@ -7,17 +7,51 @@ import ChatMessages from '@/components/chat/ChatMessages';
 import ChatInput from '@/components/chat/ChatInput';
 import DebatePanel from '@/components/chat/DebatePanel';
 import WarningCard from '@/components/chat/WarningCard';
-import BanCard from '@/components/chat/BanCard';
 import { useConversations } from '@/hooks/useConversations';
 import { useChat } from '@/hooks/useChat';
 
 export default function Chat() {
-  const { user } = useAuth();
+  const { token } = useAuth();
   const { conversations, activeId, createConversation, selectConversation } = useConversations();
   const { messages, isLoading, debate, trustStatus, sendMessage, clearTrustStatus } = useChat(activeId);
   const [showConvList, setShowConvList] = useState(false);
   const [showDebatePanel, setShowDebatePanel] = useState(true);
   const [showMobileAnalysis, setShowMobileAnalysis] = useState(false);
+  const [accountStatus, setAccountStatus] = useState<{ warnings_count: number; banned_until: string | null; ban_reason: string | null } | null>(null);
+
+  // Refresh account-level moderation state so admin actions reach an open chat.
+  useEffect(() => {
+    if (!token) {
+      setAccountStatus(null);
+      return;
+    }
+    let active = true;
+    const refreshStatus = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/v1/auth/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) return;
+        const payload = await response.json();
+        const profile = payload.user ?? payload;
+        if (!active) return;
+        setAccountStatus({
+          warnings_count: Number(profile.warnings_count ?? 0),
+          banned_until: profile.banned_until ?? null,
+          ban_reason: profile.ban_reason ?? null,
+        });
+      } catch (error) {
+        // Keep the last known moderation state if a transient poll fails.
+        console.warn('Could not refresh chat moderation status:', error);
+      }
+    };
+    void refreshStatus();
+    const timer = window.setInterval(refreshStatus, 10000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [token]);
 
   useEffect(() => {
     if (!showConvList && !showMobileAnalysis) return;
@@ -29,15 +63,10 @@ export default function Chat() {
   }, [showConvList, showMobileAnalysis]);
 
   // Check if user is banned
-  if (user && trustStatus?.action === 'banned') {
-    return (
-      <BanCard
-        bannedUntil={trustStatus.banned_until || ''}
-        reason={trustStatus.reason || 'Security policy violation'}
-        hoursLeft={trustStatus.hours_left || 24}
-      />
-    );
-  }
+  const bannedUntil = accountStatus?.banned_until || trustStatus?.banned_until || null;
+  const isCurrentlyBanned = trustStatus?.action === 'banned' || Boolean(bannedUntil && (Number.isNaN(Date.parse(bannedUntil)) || new Date(bannedUntil).getTime() > Date.now()));
+  const warningCount = Math.max(accountStatus?.warnings_count ?? 0, trustStatus?.warnings_count ?? 0);
+  const warningLimit = 3;
 
   const activeConversation = conversations.find((c) => c.id === activeId);
 
@@ -81,11 +110,17 @@ export default function Chat() {
         />
 
         {/* Warning Card */}
-        {trustStatus?.action === 'warning' && (
+        {isCurrentlyBanned ? (
+          <div role="alert" className="mx-3 mt-3 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300 sm:mx-4">
+            <p className="font-semibold">{!bannedUntil || new Date(bannedUntil).getFullYear() >= 9999 ? 'Permanently banned' : 'You are temporarily banned.'}</p>
+            <p className="mt-1 break-words text-sm">Reason: {accountStatus?.ban_reason || trustStatus?.reason || 'Security policy violation'}</p>
+            {bannedUntil && new Date(bannedUntil).getFullYear() < 9999 && <p className="mt-1 text-sm">Ban expires at: {new Date(bannedUntil).toLocaleString()}</p>}
+          </div>
+        ) : (trustStatus?.action === 'warning' || warningCount > 0) && (
           <div className="max-h-36 overflow-y-auto p-3 sm:p-4">
             <WarningCard
-              warningsCount={trustStatus.warnings_count || 1}
-              warningsLeft={trustStatus.warnings_left || 2}
+              warningsCount={warningCount || 1}
+              warningsLeft={trustStatus?.warnings_left ?? Math.max(0, warningLimit - warningCount)}
               reason={trustStatus.reason || 'Your message was flagged as potentially malicious'}
               onUnderstood={clearTrustStatus}
             />
@@ -96,10 +131,12 @@ export default function Chat() {
         
         <ChatInput
           onSend={sendMessage}
-          disabled={!!trustStatus && trustStatus.action !== 'ok'}
+          disabled={isCurrentlyBanned || (!!trustStatus && trustStatus.action !== 'ok')}
           isLoading={isLoading}
           placeholder={
-            trustStatus?.action === 'warning'
+            isCurrentlyBanned
+              ? 'You are banned. You cannot send messages.'
+              : trustStatus?.action === 'warning'
               ? 'Warning active - Be careful with your messages...'
               : 'Type a message...'
           }
@@ -109,7 +146,7 @@ export default function Chat() {
       {/* Debate Panel */}
       {showDebatePanel && (
         <div className="hidden md:block">
-          <DebatePanel debate={debate} isVisible={showDebatePanel} />
+          <DebatePanel isLoading={isLoading} verdict={debate?.verdict?.verdict} riskLevel={debate?.triage?.classification} reason={debate?.verdict?.reason} confidence={debate?.verdict?.confidence} />
         </div>
       )}
 
