@@ -21,7 +21,6 @@ ENV/
 
 # Node / React
 node_modules/
-dist/
 build/
 .next/
 out/
@@ -58,3 +57,4 @@ backend/torch_wheels/
 backend/data/
 backend/npm
 *.whl
+.vercel
