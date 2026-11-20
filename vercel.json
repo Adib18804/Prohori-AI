@@ -1,0 +1,8 @@
+{
+  "build": {
+    "dockerfile": "backend/Dockerfile"
+  },
+  "routes": [
+    { "src": "/(.*)", "dest": "/" }
+  ]
+}
