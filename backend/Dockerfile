@@ -28,4 +28,14 @@ RUN mkdir -p /app/data
 EXPOSE 8000
 
 # Start FastAPI
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "$PORT"]
+# Install nginx
+RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy built frontend static files (Vite output) into container
+COPY ../frontend/dist /app/static
+
+# Start nginx and FastAPI together
+CMD /bin/bash -c "nginx -g 'daemon off;' & uvicorn app.main:app --host 0.0.0.0 --port $PORT"
