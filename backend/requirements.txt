@@ -3,7 +3,7 @@
 
 # FastAPI and server
 fastapi==0.104.1
-uvicorn[standard]==0.24.0
+uvicorn[standard]>=0.29.0,<0.30.0
 python-multipart==0.0.6
 pydantic==2.5.0
 pydantic-settings==2.1.0
@@ -39,7 +39,7 @@ httpx==0.25.2
 requests==2.31.0
 aiofiles==23.2.1
 
-# Utilities
+cohere>=5.0.0
 python-dotenv==1.0.0
 structlog==23.2.0
 tenacity==8.2.3
@@ -60,5 +60,5 @@ bcrypt==4.1.1
 prometheus-client==0.19.0
 
 # PyTorch CPU-only (Linux wheels in torch_wheels/)
-torch==2.4.0+cpu
+##torch==2.4.0+cpu
 torchvision==0.19.0+cpu 

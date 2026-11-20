@@ -1,6 +1,7 @@
 services:
   postgres:
     image: pgvector/pgvector:pg15
+    restart: unless-stopped
     environment:
       POSTGRES_DB: prohori
       POSTGRES_USER: postgres
@@ -11,28 +12,37 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     command: postgres -c shared_preload_libraries=vector
+    healthcheck:
+      test: ["CMD","pg_isready","-U","postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./backend
     ports:
       - "8000:8000"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
     environment:
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/prohori
-      - ENABLE_RAG_MEMORY=false
+      - ENABLE_RAG_MEMORY=true
+      - ENABLE_ML_CLASSIFIER=true
     env_file:
       - .env
     volumes:
       - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
     build: ./frontend
     ports:
-      - "5173:80"
+      - "5174:80"
     depends_on:
       - backend
+    restart: unless-stopped
 
 volumes:
   postgres_data:
