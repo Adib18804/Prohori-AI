@@ -22,7 +22,23 @@ RUN pip install --no-cache-dir --default-timeout=1000 --retries 10 -r requiremen
 COPY . .
 
 # Create data directory
+# Create data directory
 RUN mkdir -p /app/data
+
+# Install nginx
+RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+
+# Copy custom nginx config
+COPY backend/nginx.conf /etc/nginx/nginx.conf
+
+# Copy built static files from frontend
+COPY frontend/dist /app/static
+
+# Expose port (Vercel will override)
+EXPOSE 8000
+
+# Run both services (nginx foreground + uvicorn)
+CMD /bin/bash -c "nginx -g 'daemon off;' & uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 
 # Expose port
 EXPOSE 8000
