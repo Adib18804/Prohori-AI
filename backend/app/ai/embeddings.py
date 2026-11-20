@@ -4,7 +4,7 @@ Embedding service for RAG and vector search
 
 from typing import List
 import structlog
-from openai import OpenAI
+import openai
 
 from app.config import get_settings
 
@@ -18,7 +18,7 @@ class EmbeddingService:
     """
     
     def __init__(self):
-        self.client = OpenAI(api_key=settings.openai_api_key)
+        self.client = openai.OpenAI(api_key=settings.openai_api_key)
         self.model = settings.embedding_model
     
     async def generate_embedding(self, text: str) -> List[float]:

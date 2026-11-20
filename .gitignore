@@ -58,3 +58,6 @@ backend/data/
 backend/npm
 *.whl
 .vercel
+
+
+!frontend/dist/

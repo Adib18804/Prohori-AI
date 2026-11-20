@@ -19,6 +19,8 @@ import Pricing from '@/pages/Pricing';
 import Billing from '@/pages/Billing';
 import Landing from '@/pages/Landing';
 import LandingOrDashboard from '@/pages/LandingOrDashboard';
+import DocsPage from '@/pages/docs/DocsPage';
+import DocsPage from '@/pages/docs/DocsPage';
 
 // Admin Layout & Components
 import AdminGuard from '@/components/admin/AdminGuard';
@@ -30,6 +32,7 @@ import RequestsTab from '@/pages/admin/RequestsTab';
 import AttacksTab from '@/pages/admin/AttacksTab';
 import SystemTab from '@/pages/admin/SystemTab';
 import SettingsTab from '@/pages/admin/SettingsTab';
+import DocsAdmin from '@/pages/admin/DocsAdmin';
 
 // Layout
 import Layout from '@/layouts/Layout';
@@ -81,6 +84,7 @@ function App() {
                   }
                 />
               </Route>
+                <Route path="docs" element={<DocsAdmin />} />
 
               {/* User Application Routes - All require authentication via Layout */}
               <Route element={<Layout />}>
@@ -96,6 +100,7 @@ function App() {
                 <Route path="audit" element={<AuditReport />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
+                <Route path="docs" element={<DocsAdmin />} />
             </Routes>
             <Toaster />
           </div>
